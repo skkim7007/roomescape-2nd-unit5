@@ -29,7 +29,7 @@ const stages = [
     words:['it?','like','How','you','did'], answer:['How','did','you','like','it?']
   },
   {
-    id: 'digital', image: 'assets/digital.webp', location: '디지털 스페이스', kicker: 'CHAPTER 04 · 문법', title: '여행 가방 스캐너',
+    id: 'digital', image: 'assets/digital.webp', location: 'DS실', kicker: 'CHAPTER 04 · 문법', title: '여행 가방 스캐너',
     story: '여행 가방 속 물건과 그 쓰임을 정확히 연결해야 검색대가 열린다. 명사를 뒤에서 꾸미는 to부정사를 사용하자.',
     difficulty: 2, hint: 'pen은 write with처럼 전치사 with를 끝에 남겨야 해요.', type: 'match',
     rows:[
@@ -272,7 +272,7 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     pageB: { name: '찢어진 종이 B', glyph: '◪', description: '오른쪽 조각. 다른 조각과 이어 붙일 수 있을 것 같다.' },
     blueFilter: { name: '청색 필터', glyph: '▣', description: '어두운 곳의 숨은 글씨를 읽게 해 주는 투명 필터.' },
     restoredNote: { name: '복원된 기록', glyph: '▤', description: 'ONLY · SECOND · THREE · 2006에 붉은 밑줄이 있다.' },
-    accessCard: { name: '디지털실 카드', glyph: '▥', description: '디지털 스페이스 출입 카드.' },
+    accessCard: { name: 'DS실 카드', glyph: '▥', description: 'DS실 출입 카드.' },
     pianoKey: { name: '피아노 열쇠', glyph: '♩', description: '오션 라운지의 오래된 피아노 덮개 열쇠.' }
   };
 
@@ -282,14 +282,14 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     classSide: { name: '2층 일반교실 · 창가', image: 'assets/horror-class-side.png?v=6' },
     homebase: { name: '2층 홈베이스', image: 'assets/horror-homebase.png?v=6' },
     library: { name: '도서관 · 자료 열람실', image: 'assets/horror-library.png?v=6' },
-    digital: { name: '디지털 스페이스', image: 'assets/horror-digital.png?v=6' },
+    digital: { name: 'DS실', image: 'assets/horror-digital.png?v=6' },
     lounge: { name: '오션 라운지', image: 'assets/horror-lounge.png?v=6' }
   };
 
   const freshState = () => ({
     screen: 'start', scene: 'exterior', inventory: [], selected: [], journal: [],
     flags: {}, log: '정문은 잠기지 않았다. 안쪽에서 희미한 전자음이 들린다.',
-    modal: null, startedAt: 0, elapsed: 0, mistakes: 0, hints: 0, sequenceStep: 0, sequenceChosen: []
+    modal: null, startedAt: 0, elapsed: 0, mistakes: 0, hints: 0, sequenceStep: 0, sequenceChosen: [], pianoNotes: []
   });
 
   let state = freshState();
@@ -352,13 +352,15 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
   }
 
   function objective() {
+    if (!state.flags.boardSolved) return ['첫 번째 신호', '교실의 꺼진 전자칠판을 조사해 잠금 문제를 풀어라.', 'Have you ever 뒤에는 과거분사 형태가 옵니다.'];
     if (!state.flags.pageA) return ['첫 번째 흔적', '교실 바닥에 떨어진 것을 찾아라.', '반짝이는 지점을 눌러 자세히 조사하세요.'];
-    if (!state.flags.lockerOpened) return ['사라진 기록', '교실에서 12번 사물함의 열쇠를 찾고 홈베이스로 가라.', '한 장면만 보지 말고 시선을 돌려 보세요.'];
+    if (!state.flags.lockerOpened) return ['사라진 기록', '교실 책상 서랍에서 12번 사물함의 열쇠를 찾고 홈베이스로 가라.', '창가 쪽 책상들의 서랍을 자세히 살펴보세요.'];
     if (!state.flags.noteCombined) return ['둘로 나뉜 기록', '종이 조각 두 장을 인벤토리에서 선택해 조합하라.', '아이템 두 개를 고른 뒤 ‘조합’을 누르세요.'];
     if (!state.flags.libraryOpen) return ['네 개의 밑줄', '복원된 기록의 강조어를 숫자로 바꿔 도서관 문을 열어라.', '영어 서수와 연도를 관찰하세요.'];
     if (!state.flags.librarySolved) return ['어둠 속 어휘', '청색 필터로 도서관 서가의 숨은 글씨를 읽어라.', '필터를 선택한 상태로 서가를 조사하세요.'];
-    if (!state.flags.digitalSolved) return ['끊어진 문장', '출입 카드로 디지털실에 들어가 두 문장을 복구하라.', '5과의 현재완료와 to부정사를 떠올리세요.'];
-    if (!state.flags.finished) return ['마지막 증언', '피아노 안의 기록을 열고 우정의 역사를 완성하라.', '여러 방에서 모은 기록을 다시 확인하세요.'];
+    if (!state.flags.digitalSolved) return ['끊어진 문장', '출입 카드로 DS실에 들어가 세 문장을 복구하라.', '5과의 의사소통 표현, 현재완료와 to부정사를 떠올리세요.'];
+    if (!state.flags.pianoUnlocked) return ['마지막 연주', '피아노 악보의 네 문장을 풀어 건반 순서를 찾아라.', '각 문장의 정답이 몇 번째 선택지인지 차례로 연주하세요.'];
+    if (!state.flags.finished) return ['마지막 증언', '피아노 안의 기록을 읽고 우정의 역사를 완성하라.', '여러 방에서 모은 기록을 다시 확인하세요.'];
     return ['탈출 성공', '오션중학교의 21시 기록을 복원했다.', '모든 단서가 하나의 역사로 이어졌다.'];
   }
 
@@ -368,20 +370,20 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
         { x: 52, y: 68, label: '현관으로 들어간다', kind: 'exit', action: 'go', value: 'classFront' }
       ],
       classFront: [
-        { x: 50, y: 34, label: '꺼진 전자칠판', action: 'board' },
+        { x: 50, y: 34, label: '전원이 꺼진 전자칠판', action: 'board' },
         { x: 89, y: 49, label: '복도로 나간다', kind: 'exit', action: 'go', value: 'homebase' },
         { x: 10, y: 53, label: '창가 쪽으로 시선을 돌린다', kind: 'exit', action: 'go', value: 'classSide' }
       ],
       classSide: [
-        ...(!state.flags.pageA ? [{ x: 55, y: 82, label: '구겨진 종이', kind: 'item', action: 'pickup', value: 'pageA' }] : []),
-        ...(!state.flags.keyFound && state.flags.boardSeen ? [{ x: 79, y: 70, label: '교탁 아래의 반짝임', kind: 'item', action: 'pickup', value: 'lockerKey' }] : []),
+        ...(!state.flags.pageA ? [{ x: 44, y: 74, label: '바닥의 구겨진 종이', kind: 'item', action: 'pickup', value: 'pageA' }] : []),
+        ...(!state.flags.keyFound && state.flags.boardSolved ? [{ x: 34, y: 51, label: '책상 서랍 안의 반짝임', kind: 'item', action: 'pickup', value: 'lockerKey' }] : []),
         { x: 11, y: 48, label: '교실 앞쪽을 본다', kind: 'exit', action: 'go', value: 'classFront' }
       ],
       homebase: [
         { x: 51, y: 63, label: '12번 사물함', action: 'locker' },
         { x: 85, y: 54, label: '도서관 방화문', kind: 'exit', action: 'libraryDoor' },
         { x: 13, y: 57, label: '일반교실로 돌아간다', kind: 'exit', action: 'go', value: 'classFront' },
-        ...(state.flags.librarySolved ? [{ x: 69, y: 48, label: '디지털실 출입문', kind: 'exit', action: 'digitalDoor' }] : [])
+        ...(state.flags.librarySolved ? [{ x: 69, y: 48, label: 'DS실 출입문', kind: 'exit', action: 'digitalDoor' }] : [])
       ],
       library: [
         { x: 50, y: 59, label: '곡선 서가의 숨은 표식', action: 'shelf' },
@@ -394,7 +396,7 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
       ],
       lounge: [
         { x: 83, y: 54, label: '잠긴 피아노', action: 'piano' },
-        { x: 7, y: 53, label: '디지털실로 돌아간다', kind: 'exit', action: 'go', value: 'digital' }
+        { x: 7, y: 53, label: 'DS실로 돌아간다', kind: 'exit', action: 'go', value: 'digital' }
       ]
     };
     return spots[state.scene] || [];
@@ -416,13 +418,14 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     if (!state.modal) return '';
     const type = state.modal;
     let body = '';
-    if (type === 'board') body = `<div class="eyebrow">교실 전자칠판</div><h2>멈춘 질문</h2><p>화면 한쪽에 마지막으로 입력된 영어 문장이 남아 있다.</p><div class="clue-paper">“<strong>Have you ever visited Chuncheon?</strong>”<br><br><small>그리고 교탁을 비추는 작은 화살표가 깜박인다.</small></div><div class="modal-actions"><button class="button primary" data-action="closeModal">확인</button></div>`;
+    if (type === 'board') body = `<div class="eyebrow">교실 전자칠판 · 비상 전원</div><h2>멈춘 문장을 완성하라</h2><p>화면은 꺼져 있지만 아래쪽 비상 표시창에 한 문장만 희미하게 남아 있다.</p><div class="dark-screen-note"><strong>Have you ever ___ Chuncheon?</strong><small>알맞은 말을 선택하면 마지막 위치 정보가 나타난다.</small></div><div class="board-options"><button class="token" data-action="answerBoard" data-value="visit">visit</button><button class="token" data-action="answerBoard" data-value="visited">visited</button><button class="token" data-action="answerBoard" data-value="visiting">visiting</button></div><p class="error" data-error></p><div class="modal-actions"><button class="button" data-action="closeModal">나중에</button></div>`;
     if (type === 'pageA') body = `<div class="eyebrow">습득한 단서</div><h2>찢어진 종이 A</h2><div class="clue-paper">Ethiopia was the <strong>ONLY</strong> African country<br>to send soldiers during the Korean <span class="cut">War...</span><br><br><span class="cut">The me...</span> has THREE round <span class="cut">roofs...</span></div><p>오른쪽 절반이 있어야 내용을 읽을 수 있다.</p><div class="modal-actions"><button class="button primary" data-action="closeModal">접어 둔다</button></div>`;
     if (type === 'restoredNote') body = `<div class="eyebrow">조합 성공</div><h2>복원된 우정의 기록</h2><div class="clue-paper">Ethiopia was the <strong>ONLY</strong> African country to send soldiers.<br><br>The <strong>SECOND</strong> floor displays cultural items.<br><br>The house has <strong>THREE</strong> round roofs.<br><br>The memorial was built in <strong>2006</strong>.<br><br><em>“밑줄 친 네 부분을 한 자리씩 읽어라.”</em></div><p>서수는 숫자로, 연도는 마지막 한 자리로 바꾸면 네 자리 암호가 된다.</p><div class="modal-actions"><button class="button primary" data-action="closeModal">기록한다</button></div>`;
     if (type === 'libraryKeypad') body = `<div class="eyebrow">도서관 방화문</div><h2>4자리 기록 번호</h2><p>복원된 종이의 붉은 밑줄 네 개가 순서대로 열쇠가 된다.</p><label class="field-label" for="codeAnswer">암호 입력</label><input id="codeAnswer" class="code-input" inputmode="numeric" maxlength="4" autocomplete="off"><p class="error" data-error></p><div class="modal-actions"><button class="button" data-action="closeModal">취소</button><button class="button primary" data-action="submitCode">해제</button></div>`;
     if (type === 'shelfPuzzle') body = `<div class="eyebrow">청색 필터로 드러난 글씨</div><h2>세 권의 책</h2><p>각 뜻풀이에 맞는 5과 단어를 영어로 입력하라. 세 단어가 모두 맞아야 서랍이 열린다.</p><label class="field-label">1. a person who travels to a place for pleasure</label><input class="code-input answer-input" data-vocab="0" autocomplete="off"><label class="field-label">2. a person who wears a uniform and protects a country</label><input class="code-input answer-input" data-vocab="1" autocomplete="off"><label class="field-label">3. to show great respect to someone</label><input class="code-input answer-input" data-vocab="2" autocomplete="off"><p class="error" data-error></p><div class="modal-actions"><button class="button" data-action="closeModal">나중에</button><button class="button primary" data-action="submitVocab">서가 조사</button></div>`;
     if (type === 'sequence') body = sequenceMarkup();
-    if (type === 'final') body = `<div class="eyebrow">피아노 내부의 마지막 기록</div><h2>우정의 증언</h2><p>지금까지 모은 기록을 바탕으로 빈칸을 영어로 완성하라.</p><label class="field-label">1. ______ was the only African country to send soldiers.</label><input class="code-input answer-input" data-final="0" autocomplete="off"><label class="field-label">2. Chuncheon built a memorial ______ the soldiers. (두 단어)</label><input class="code-input answer-input" data-final="1" autocomplete="off"><label class="field-label">3. Ethiopia ______ strong ties with Korea for many years. (두 단어)</label><input class="code-input answer-input" data-final="2" autocomplete="off"><p class="error" data-error></p><div class="modal-actions"><button class="button" data-action="closeModal">기록 다시 보기</button><button class="button primary" data-action="submitFinal">기록 완성</button></div>`;
+    if (type === 'pianoCode') body = pianoCodeMarkup();
+    if (type === 'final') body = `<div class="eyebrow">피아노 내부의 마지막 기록</div><h2>새로운 우정의 증언</h2><p>앞에서 풀지 않았던 세 문장의 빈칸을 영어로 완성하라.</p><label class="field-label">1. Ethiopian soldiers used their own money to ____ Korean children.</label><input class="code-input answer-input" data-final="0" autocomplete="off"><label class="field-label">2. The Memorial Hall in Chuncheon has three round ____.</label><input class="code-input answer-input" data-final="1" autocomplete="off"><label class="field-label">3. Kate ____ to Ethiopia once. (두 단어)</label><input class="code-input answer-input" data-final="2" autocomplete="off"><p class="error" data-error></p><div class="modal-actions"><button class="button" data-action="closeModal">기록 다시 보기</button><button class="button primary" data-action="submitFinal">기록 완성</button></div>`;
     if (type === 'journal') body = `<div class="eyebrow">조사 수첩</div><h2>발견한 기록</h2><ul class="journal-list">${state.journal.length ? state.journal.map(x => `<li>${x}</li>`).join('') : '<li>아직 기록한 단서가 없다.</li>'}</ul><div class="modal-actions"><button class="button primary" data-action="closeModal">닫기</button></div>`;
     if (type === 'hint') body = `<div class="eyebrow">현재 단계 힌트</div><h2>조금만 더 자세히</h2><p>${hintText()}</p><div class="modal-actions"><button class="button primary" data-action="closeModal">계속 조사</button></div>`;
     if (type === 'item') {
@@ -434,13 +437,20 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
 
   const sequences = [
     { prompt: '현재까지 이어진 관계를 나타내는 문장', tokens: ['for many years.', 'strong ties', 'Ethiopia', 'with Korea', 'has had'], answer: ['Ethiopia', 'has had', 'strong ties', 'with Korea', 'for many years.'] },
-    { prompt: '관람할 문화 물품이 많다는 문장', tokens: ['on the second floor.', 'There are', 'to see', 'many cultural items'], answer: ['There are', 'many cultural items', 'to see', 'on the second floor.'] }
+    { prompt: '관람할 문화 물품이 많다는 문장', tokens: ['on the second floor.', 'There are', 'to see', 'many cultural items'], answer: ['There are', 'many cultural items', 'to see', 'on the second floor.'] },
+    { prompt: '춘천 여행에 대한 소감을 묻는 문장', tokens: ['the trip?', 'you', 'How', 'like', 'did'], answer: ['How', 'did', 'you', 'like', 'the trip?'] }
   ];
 
   function sequenceMarkup() {
     const seq = sequences[state.sequenceStep];
     const chosen = state.sequenceChosen;
-    return `<div class="eyebrow">화면 ${state.sequenceStep + 1} / 2</div><h2>끊어진 문장 신호</h2><p>${seq.prompt}. 아래 조각을 올바른 순서로 누르세요.</p><div class="token-board" aria-label="조립한 문장">${chosen.map((t, i) => `<button class="token" data-action="removeToken" data-value="${i}">${t}</button>`).join('') || '<span style="color:var(--muted)">여기에 문장을 조립하세요.</span>'}</div><div class="token-board" aria-label="문장 조각">${seq.tokens.map(t => `<button class="token ${chosen.includes(t) ? 'chosen' : ''}" data-action="addToken" data-value="${t}" ${chosen.includes(t) ? 'disabled' : ''}>${t}</button>`).join('')}</div><p class="error" data-error></p><div class="modal-actions"><button class="button" data-action="resetTokens">다시 배열</button><button class="button primary" data-action="submitSequence">신호 전송</button></div>`;
+    return `<div class="eyebrow">화면 ${state.sequenceStep + 1} / ${sequences.length}</div><h2>끊어진 문장 신호</h2><p>${seq.prompt}. 아래 조각을 올바른 순서로 누르세요.</p><div class="token-board" aria-label="조립한 문장">${chosen.map((t, i) => `<button class="token" data-action="removeToken" data-value="${i}">${t}</button>`).join('') || '<span style="color:var(--muted)">여기에 문장을 조립하세요.</span>'}</div><div class="token-board" aria-label="문장 조각">${seq.tokens.map(t => `<button class="token ${chosen.includes(t) ? 'chosen' : ''}" data-action="addToken" data-value="${t}" ${chosen.includes(t) ? 'disabled' : ''}>${t}</button>`).join('')}</div><p class="error" data-error></p><div class="modal-actions"><button class="button" data-action="resetTokens">다시 배열</button><button class="button primary" data-action="submitSequence">신호 전송</button></div>`;
+  }
+
+  function pianoCodeMarkup() {
+    const notes = state.pianoNotes || [];
+    const noteNames = ['도', '레', '미', '파', '솔', '라', '시'];
+    return `<div class="eyebrow">피아노 위의 낡은 악보</div><h2>정답의 번호를 연주하라</h2><p>각 문장의 빈칸에 맞는 말을 고르고, 그 선택지의 번호를 위에서부터 누르세요.</p><ol class="music-clues"><li>Have you ever ___ Chuncheon?<br><span>① visit　② visited　③ visiting</span></li><li>There are many cultural items ___ on the second floor.<br><span>① seeing　② to see　③ saw</span></li><li>Ethiopia ___ the only African country to send soldiers.<br><span>① was　② were　③ is</span></li><li>How did you ___ the trip?<br><span>① liked　② like　③ liking</span></li></ol><div class="note-display" aria-label="입력한 건반">${notes.length ? notes.map(n => `<span>${n}</span>`).join('') : '<em>— — — —</em>'}</div><div class="piano-keyboard" aria-label="피아노 건반"><div class="white-keys">${noteNames.map((name, i) => `<button class="piano-white" data-action="pianoNote" data-value="${i + 1}" ${notes.length >= 4 ? 'disabled' : ''}><b>${name}</b><small>${i + 1}</small></button>`).join('')}</div><div class="black-keys" aria-hidden="true"><i style="left:14.3%"></i><i style="left:28.6%"></i><i style="left:57.1%"></i><i style="left:71.4%"></i><i style="left:85.7%"></i></div></div><p class="error" data-error></p><div class="modal-actions"><button class="button" data-action="resetPiano">다시 연주</button><button class="button primary" data-action="submitPianoCode">잠금 해제</button></div>`;
   }
 
   function hintText() {
@@ -449,12 +459,13 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     if (!state.flags.libraryOpen && state.flags.noteCombined) return 'ONLY=1, SECOND=2, THREE=3, 그리고 2006에서는 마지막 숫자만 읽습니다.';
     if (!state.flags.librarySolved && state.flags.libraryOpen) return '청색 필터를 먼저 인벤토리에서 선택한 다음, 가운데 곡선 서가를 누르세요.';
     if (!state.flags.digitalSolved && state.flags.librarySolved) return '현재완료는 has had, 목적을 나타내는 to부정사는 to see입니다.';
+    if (!state.flags.pianoUnlocked && state.flags.digitalSolved) return '네 문장의 정답 선택지 번호는 차례로 2, 2, 1, 2입니다.';
     return base;
   }
 
   function render() {
     if (state.screen === 'start') {
-      root.innerHTML = `<main class="start-screen"><div class="start-bg"></div><section class="start-card"><div class="eyebrow">UNIT 5 · DISCOVER KOREA</div><h1>21시의 기록<span>오션중학교 야간 조사</span></h1><p>야간 자율학습이 끝난 뒤, 학교의 모든 전자문이 잠겼다. 흩어진 우정의 기록을 복원해야만 중앙 현관을 다시 열 수 있다.</p><div class="warning">장면의 희미한 표식을 조사하세요. 물건은 인벤토리에서 선택하거나 두 개를 조합할 수 있습니다. 공포 연출은 있지만 괴물과 잔혹 표현은 없습니다.</div><button class="button primary" data-action="start">학교에 들어가기</button></section></main>`;
+      root.innerHTML = `<main class="start-screen"><div class="start-bg"></div><section class="start-card"><div class="eyebrow">UNIT 5 · DISCOVER KOREA</div><h1>21시의 기록<span>오션중학교 방과후 교내 조사</span></h1><p>방과후 수업이 끝난 뒤, 학교의 모든 전자문이 잠겼다. 흩어진 우정의 기록을 복원해야만 중앙 현관을 다시 열 수 있다.</p><div class="warning">장면의 희미한 표식을 조사하세요. 물건은 인벤토리에서 선택하거나 두 개를 조합할 수 있습니다. 공포 연출은 있지만 괴물과 잔혹 표현은 없습니다.</div><button class="button primary" data-action="start">학교에 들어가기</button></section></main>`;
       bind(); return;
     }
     if (state.screen === 'ending') { renderEnding(); return; }
@@ -484,7 +495,7 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
         classSide: '창가 쪽 바닥에 누군가 급히 떨어뜨린 흔적이 보인다.',
         homebase: '사물함들이 늘어서 있다. 12번 문에 긁힌 자국이 선명하다.',
         library: '오래된 나무 냄새가 난다. 가운데 서가에 푸른 흔적이 번져 있다.',
-        digital: '빈 모니터 사이에서 대형 화면 하나만 불규칙하게 깜박인다.',
+        digital: 'DS실의 빈 모니터 사이에서 대형 화면 하나만 불규칙하게 깜박인다.',
         lounge: '달빛 아래 피아노 한 대만 따뜻한 빛을 받고 있다.'
       };
       state.log = messages[scene] || '다시 익숙한 장소로 돌아왔다.'; render();
@@ -502,7 +513,8 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     if (action === 'closeModal') return closeModal();
     if (action === 'showJournal') return openModal('journal');
     if (action === 'showHint') return openModal('hint');
-    if (action === 'board') { state.flags.boardSeen = true; state.log = '질문을 읽자 교탁 아래를 가리키는 화살표가 켜졌다.'; addJournal('전자칠판: “Have you ever visited Chuncheon?” — 경험을 묻는 Have you ever + p.p.'); return openModal('board'); }
+    if (action === 'board') return inspectBoard();
+    if (action === 'answerBoard') return answerBoard(value);
     if (action === 'pickup') return pickup(value);
     if (action === 'locker') return openLocker();
     if (action === 'selectItem') return selectItem(value);
@@ -518,13 +530,29 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     if (action === 'resetTokens') { state.sequenceChosen = []; return render(); }
     if (action === 'submitSequence') return submitSequence();
     if (action === 'piano') return piano();
+    if (action === 'pianoNote') { if ((state.pianoNotes || []).length < 4) state.pianoNotes.push(value); return render(); }
+    if (action === 'resetPiano') { state.pianoNotes = []; return render(); }
+    if (action === 'submitPianoCode') return submitPianoCode();
     if (action === 'submitFinal') return submitFinal();
   }
 
   function pickup(item) {
     addItem(item);
     if (item === 'pageA') { state.flags.pageA = true; state.log = '종이 한쪽이 찢겨 있다. 반대쪽 조각이 학교 어딘가에 있다.'; addJournal('종이 A: ONLY, THREE가 붉게 표시되어 있다.'); openModal('pageA'); }
-    if (item === 'lockerKey') { state.flags.keyFound = true; state.log = '12번 사물함 열쇠다. 홈베이스에서 맞는 문을 찾아야 한다.'; addJournal('교탁 아래에서 “12”가 새겨진 열쇠를 발견했다.'); render(); }
+    if (item === 'lockerKey') { state.flags.keyFound = true; state.log = '책상 서랍 안에 숨겨진 12번 사물함 열쇠다. 홈베이스에서 맞는 문을 찾아야 한다.'; addJournal('교실 책상 서랍에서 “12”가 새겨진 열쇠를 발견했다.'); render(); }
+  }
+
+  function inspectBoard() {
+    if (state.flags.boardSolved) { state.log = '비상 표시창에는 “창가 쪽 세 번째 책상 서랍”이라는 위치 정보가 남아 있다.'; return render(); }
+    openModal('board');
+  }
+
+  function answerBoard(answer) {
+    if (answer !== 'visited') return error('표시창이 다시 어두워진다. Have you ever 뒤에 오는 동사 형태를 확인하자.');
+    state.flags.boardSeen = true; state.flags.boardSolved = true; state.modal = null;
+    state.log = '정답을 누르자 비상 표시창에 “창가 쪽 세 번째 책상 서랍”이 나타났다.';
+    addJournal('전자칠판: Have you ever visited Chuncheon? — have + 과거분사 visited.');
+    notify('책상 서랍의 위치가 드러났다.'); render();
   }
 
   function openLocker() {
@@ -567,7 +595,7 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
   function submitVocab() {
     const answers = [...root.querySelectorAll('[data-vocab]')].map(n => n.value.trim().toLowerCase());
     if (answers.join('|') !== 'tourist|soldier|honor') return error('한 권이 움직이지 않는다. 뜻풀이와 철자를 모두 확인하자.');
-    removeItem('blueFilter'); addItem('accessCard'); state.flags.librarySolved = true; state.selected = []; state.modal = null; state.log = '세 권을 차례로 누르자 숨은 서랍에서 디지털실 출입 카드가 나왔다.'; addJournal('어휘: tourist(관광객), soldier(군인), honor(기리다).'); notify('디지털실 출입 카드를 얻었다.'); render();
+    removeItem('blueFilter'); addItem('accessCard'); state.flags.librarySolved = true; state.selected = []; state.modal = null; state.log = '세 권을 차례로 누르자 숨은 서랍에서 DS실 출입 카드가 나왔다.'; addJournal('어휘: tourist(관광객), soldier(군인), honor(기리다).'); notify('DS실 출입 카드를 얻었다.'); render();
   }
 
   function digitalDoor() {
@@ -583,19 +611,26 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
   function submitSequence() {
     const seq = sequences[state.sequenceStep];
     if (state.sequenceChosen.join('|') !== seq.answer.join('|')) return error('신호가 끊겼다. 문장 성분과 시제를 다시 확인하자.');
-    if (state.sequenceStep === 0) { state.sequenceStep = 1; state.sequenceChosen = []; notify('첫 번째 문장 복구 완료.'); return render(); }
-    removeItem('accessCard'); addItem('pianoKey'); state.flags.digitalSolved = true; state.selected = []; state.modal = null; state.log = '두 문장이 연결되며 화면 아래에서 작은 피아노 열쇠가 떨어졌다.'; addJournal('현재완료: Ethiopia has had strong ties with Korea for many years.'); addJournal('to부정사의 형용사적 용법: many cultural items to see.'); notify('피아노 열쇠를 얻었다.'); render();
+    if (state.sequenceStep < sequences.length - 1) { state.sequenceStep += 1; state.sequenceChosen = []; notify(`${state.sequenceStep}번째 문장 복구 완료.`); return render(); }
+    removeItem('accessCard'); addItem('pianoKey'); state.flags.digitalSolved = true; state.selected = []; state.modal = null; state.log = '세 문장이 연결되며 화면 아래에서 작은 피아노 열쇠가 떨어졌다.'; addJournal('현재완료: Ethiopia has had strong ties with Korea for many years.'); addJournal('to부정사의 형용사적 용법: many cultural items to see.'); addJournal('여행 소감 묻기: How did you like the trip?'); notify('피아노 열쇠를 얻었다.'); render();
   }
 
   function piano() {
-    if (!state.selected.includes('pianoKey')) { state.log = has('pianoKey') ? '피아노 열쇠를 인벤토리에서 선택해 덮개를 열자.' : '덮개가 잠겨 있다. 디지털실의 신호와 관련 있어 보인다.'; return render(); }
-    openModal('final');
+    if (!state.selected.includes('pianoKey') && !state.flags.pianoUnlocked) { state.log = has('pianoKey') ? '피아노 열쇠를 인벤토리에서 선택해 덮개를 열자.' : '덮개가 잠겨 있다. DS실의 신호와 관련 있어 보인다.'; return render(); }
+    if (state.flags.pianoUnlocked) return openModal('final');
+    state.pianoNotes = [];
+    openModal('pianoCode');
+  }
+
+  function submitPianoCode() {
+    if ((state.pianoNotes || []).join('') !== '2212') return error('낮은 불협화음이 울린다. 각 문장의 정답이 몇 번째 선택지인지 다시 확인하자.');
+    removeItem('pianoKey'); state.flags.pianoUnlocked = true; state.pianoNotes = []; addJournal('피아노 악보: visited(②), to see(②), was(①), like(②) → 2-2-1-2.'); state.log = '정답 번호대로 건반을 누르자 피아노 안쪽 비밀 칸이 열렸다.'; notify('피아노의 비밀 칸이 열렸다.'); openModal('final');
   }
 
   function submitFinal() {
     const a = [...root.querySelectorAll('[data-final]')].map(n => n.value.trim().toLowerCase().replace(/[.]/g, ''));
-    const ok = a[0] === 'ethiopia' && a[1] === 'to honor' && a[2] === 'has had';
-    if (!ok) return error('피아노가 불협화음을 낸다. 수첩에서 국가, 목적의 to부정사, 현재완료를 함께 확인하자.');
+    const ok = a[0] === 'help' && a[1] === 'roofs' && a[2] === 'has been';
+    if (!ok) return error('피아노가 불협화음을 낸다. help의 원형, 복수형 roofs, 현재완료 has been을 확인하자.');
     state.elapsed = currentElapsed(); state.startedAt = 0; state.flags.finished = true; state.screen = 'ending'; localStorage.removeItem(SAVE_KEY); render();
   }
 
