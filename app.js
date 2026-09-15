@@ -268,7 +268,7 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
 
   const ITEMS = {
     pageA: { name: '찢어진 종이 A', glyph: '◩', description: '비에 젖은 종이의 왼쪽 조각. 문장 일부만 보인다.' },
-    lockerKey: { name: '12번 열쇠', glyph: '⚿', description: '손때 묻은 작은 사물함 열쇠. 12라는 숫자가 새겨져 있다.' },
+    lockerKey: { name: '3번 열쇠', glyph: '⚿', description: '손때 묻은 작은 사물함 열쇠. 3이라는 숫자가 새겨져 있다.' },
     pageB: { name: '찢어진 종이 B', glyph: '◪', description: '오른쪽 조각. 다른 조각과 이어 붙일 수 있을 것 같다.' },
     blueFilter: { name: '청색 필터', glyph: '▣', description: '어두운 곳의 숨은 글씨를 읽게 해 주는 투명 필터.' },
     restoredNote: { name: '복원된 기록', glyph: '▤', description: 'ONLY · SECOND · THREE · 2006에 붉은 밑줄이 있다.' },
@@ -289,12 +289,15 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
   const freshState = () => ({
     screen: 'start', scene: 'exterior', inventory: [], selected: [], journal: [],
     flags: {}, log: '정문은 잠기지 않았다. 안쪽에서 희미한 전자음이 들린다.',
-    modal: null, startedAt: 0, elapsed: 0, mistakes: 0, hints: 0, sequenceStep: 0, sequenceChosen: [], pianoNotes: []
+    modal: null, startedAt: 0, elapsed: 0, mistakes: 0, hints: 0, sequenceStep: 0, sequenceChosen: [], pianoNotes: [], soundOn: true
   });
 
   let state = freshState();
   let ticker = null;
   let transitioning = false;
+  let audioContext = null;
+  let ambientStarted = false;
+  let ambientMaster = null;
 
   function safeLoad() {
     try {
@@ -327,6 +330,64 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     }, 1000);
   }
 
+  function ensureAudio() {
+    if (!state.soundOn) return null;
+    const AudioEngine = window.AudioContext || window.webkitAudioContext;
+    if (!AudioEngine) return null;
+    if (!audioContext) audioContext = new AudioEngine();
+    if (audioContext.state === 'suspended') audioContext.resume().catch(() => {});
+    return audioContext;
+  }
+
+  function startAmbient() {
+    const ctx = ensureAudio();
+    if (!ctx || ambientStarted) return;
+    ambientStarted = true;
+    ambientMaster = ctx.createGain();
+    ambientMaster.gain.setValueAtTime(0.0001, ctx.currentTime);
+    ambientMaster.gain.exponentialRampToValueAtTime(0.018, ctx.currentTime + 2.5);
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass'; filter.frequency.value = 240; filter.Q.value = 0.7;
+    filter.connect(ambientMaster); ambientMaster.connect(ctx.destination);
+    [55, 82.41].forEach((frequency, index) => {
+      const osc = ctx.createOscillator(); const gain = ctx.createGain();
+      osc.type = index ? 'triangle' : 'sine'; osc.frequency.value = frequency; osc.detune.value = index ? -7 : 5;
+      gain.gain.value = index ? 0.22 : 0.34; osc.connect(gain); gain.connect(filter); osc.start();
+    });
+    const lfo = ctx.createOscillator(); const lfoDepth = ctx.createGain();
+    lfo.frequency.value = 0.075; lfoDepth.gain.value = 0.006; lfo.connect(lfoDepth); lfoDepth.connect(ambientMaster.gain); lfo.start();
+    const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 3, ctx.sampleRate);
+    const data = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < data.length; i += 1) data[i] = (Math.random() * 2 - 1) * 0.12;
+    const noise = ctx.createBufferSource(); const noiseFilter = ctx.createBiquadFilter(); const noiseGain = ctx.createGain();
+    noise.buffer = noiseBuffer; noise.loop = true; noiseFilter.type = 'bandpass'; noiseFilter.frequency.value = 310; noiseFilter.Q.value = 0.35; noiseGain.gain.value = 0.018;
+    noise.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(ambientMaster); noise.start();
+  }
+
+  function wakeAudio() { if (state.soundOn) { ensureAudio(); startAmbient(); } }
+
+  function toggleSound() {
+    state.soundOn = !state.soundOn;
+    if (state.soundOn) wakeAudio();
+    else if (audioContext?.state === 'running') audioContext.suspend().catch(() => {});
+    render();
+  }
+
+  function playPianoNote(number) {
+    const ctx = ensureAudio();
+    if (!ctx || !state.soundOn) return;
+    const frequency = [261.63, 293.66, 329.63, 349.23, 392, 440, 493.88][Number(number) - 1];
+    if (!frequency) return;
+    const now = ctx.currentTime; const master = ctx.createGain();
+    master.gain.setValueAtTime(0.0001, now); master.gain.exponentialRampToValueAtTime(0.11, now + 0.018); master.gain.exponentialRampToValueAtTime(0.0001, now + 1.15);
+    master.connect(ctx.destination);
+    [{ type: 'triangle', ratio: 1, volume: 0.75 }, { type: 'sine', ratio: 2, volume: 0.18 }].forEach(part => {
+      const osc = ctx.createOscillator(); const gain = ctx.createGain();
+      osc.type = part.type; osc.frequency.value = frequency * part.ratio; gain.gain.value = part.volume;
+      osc.connect(gain); gain.connect(master); osc.start(now); osc.stop(now + 1.2);
+    });
+  }
+
   function notify(message) {
     toastNode.textContent = message;
     toastNode.classList.add('show');
@@ -354,7 +415,7 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
   function objective() {
     if (!state.flags.boardSolved) return ['첫 번째 신호', '교실의 꺼진 전자칠판을 조사해 잠금 문제를 풀어라.', 'Have you ever 뒤에는 과거분사 형태가 옵니다.'];
     if (!state.flags.pageA) return ['첫 번째 흔적', '교실 바닥에 떨어진 것을 찾아라.', '반짝이는 지점을 눌러 자세히 조사하세요.'];
-    if (!state.flags.lockerOpened) return ['사라진 기록', '교실 책상 서랍에서 12번 사물함의 열쇠를 찾고 홈베이스로 가라.', '창가 쪽 책상들의 서랍을 자세히 살펴보세요.'];
+    if (!state.flags.lockerOpened) return ['사라진 기록', '교실 책상 서랍에서 3번 사물함의 열쇠를 찾고 홈베이스로 가라.', '화면을 돌리지 말고 앞쪽 가운데 왼편 책상 서랍을 살펴보세요.'];
     if (!state.flags.noteCombined) return ['둘로 나뉜 기록', '종이 조각 두 장을 인벤토리에서 선택해 조합하라.', '아이템 두 개를 고른 뒤 ‘조합’을 누르세요.'];
     if (!state.flags.libraryOpen) return ['네 개의 밑줄', '복원된 기록의 강조어를 숫자로 바꿔 도서관 문을 열어라.', '영어 서수와 연도를 관찰하세요.'];
     if (!state.flags.librarySolved) return ['어둠 속 어휘', '청색 필터로 도서관 서가의 숨은 글씨를 읽어라.', '필터를 선택한 상태로 서가를 조사하세요.'];
@@ -371,16 +432,16 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
       ],
       classFront: [
         { x: 50, y: 34, label: '전원이 꺼진 전자칠판', action: 'board' },
+        ...(!state.flags.keyFound && state.flags.boardSolved ? [{ x: 38, y: 59, label: '책상 서랍 안의 반짝임', kind: 'item', action: 'pickup', value: 'lockerKey' }] : []),
         { x: 89, y: 49, label: '복도로 나간다', kind: 'exit', action: 'go', value: 'homebase' },
         { x: 10, y: 53, label: '창가 쪽으로 시선을 돌린다', kind: 'exit', action: 'go', value: 'classSide' }
       ],
       classSide: [
         ...(!state.flags.pageA ? [{ x: 44, y: 74, label: '바닥의 구겨진 종이', kind: 'item', action: 'pickup', value: 'pageA' }] : []),
-        ...(!state.flags.keyFound && state.flags.boardSolved ? [{ x: 34, y: 51, label: '책상 서랍 안의 반짝임', kind: 'item', action: 'pickup', value: 'lockerKey' }] : []),
         { x: 11, y: 48, label: '교실 앞쪽을 본다', kind: 'exit', action: 'go', value: 'classFront' }
       ],
       homebase: [
-        { x: 51, y: 63, label: '12번 사물함', action: 'locker' },
+        { x: 51, y: 63, label: '3번 사물함', action: 'locker' },
         { x: 85, y: 54, label: '도서관 방화문', kind: 'exit', action: 'libraryDoor' },
         { x: 13, y: 57, label: '일반교실로 돌아간다', kind: 'exit', action: 'go', value: 'classFront' },
         ...(state.flags.librarySolved ? [{ x: 69, y: 48, label: 'DS실 출입문', kind: 'exit', action: 'digitalDoor' }] : [])
@@ -471,7 +532,7 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     if (state.screen === 'ending') { renderEnding(); return; }
     const [chapter, title, sub] = objective();
     const scene = SCENES[state.scene];
-    root.innerHTML = `<main class="game"><div class="scene ${transitioning ? 'is-transitioning' : ''}"><img class="scene-image" src="${scene.image}" alt="${scene.name}" draggable="false">${hotspots().map(hotspotMarkup).join('')}</div><div class="grain"></div><div class="hud"><div class="topbar"><section class="objective"><div class="eyebrow">${chapter}</div><strong>${title}</strong><small>${sub}</small></section><div class="top-actions"><div class="status-chip">◷ <b data-clock>${timeText()}</b></div><button class="icon-button" data-action="showHint" aria-label="힌트">? <span>힌트</span></button><button class="icon-button" data-action="showJournal" aria-label="조사 수첩">▤ <span>수첩</span></button></div></div><div class="scene-label">${scene.name}</div><div class="log-box" aria-live="polite"><strong>조사</strong>${state.log}</div></div><section class="inventory-wrap"><div class="inventory-head"><span>INVENTORY · ${state.inventory.length}/${MAX_SLOTS}</span><span>${state.selected.length ? `${state.selected.length}개 선택됨` : '아이템을 선택하세요'}</span></div><div class="inventory">${inventoryMarkup()}<button class="combine-button" data-action="combine" ${state.selected.length !== 2 ? 'disabled' : ''}>조합</button></div></section>${modalMarkup()}</main>`;
+    root.innerHTML = `<main class="game"><div class="scene ${transitioning ? 'is-transitioning' : ''}"><img class="scene-image" src="${scene.image}" alt="${scene.name}" draggable="false">${hotspots().map(hotspotMarkup).join('')}</div><div class="grain"></div><div class="hud"><div class="topbar"><section class="objective"><div class="eyebrow">${chapter}</div><strong>${title}</strong><small>${sub}</small></section><div class="top-actions"><div class="status-chip">◷ <b data-clock>${timeText()}</b></div><button class="icon-button sound-button" data-action="toggleSound" aria-label="${state.soundOn ? '소리 끄기' : '소리 켜기'}">${state.soundOn ? '♪' : '×'} <span>${state.soundOn ? '소리' : '음소거'}</span></button><button class="icon-button" data-action="showHint" aria-label="힌트">? <span>힌트</span></button><button class="icon-button" data-action="showJournal" aria-label="조사 수첩">▤ <span>수첩</span></button></div></div><div class="scene-label">${scene.name}</div><div class="log-box" aria-live="polite"><strong>조사</strong>${state.log}</div></div><section class="inventory-wrap"><div class="inventory-head"><span>INVENTORY · ${state.inventory.length}/${MAX_SLOTS}</span><span>${state.selected.length ? `${state.selected.length}개 선택됨` : '아이템을 선택하세요'}</span></div><div class="inventory">${inventoryMarkup()}<button class="combine-button" data-action="combine" ${state.selected.length !== 2 ? 'disabled' : ''}>조합</button></div></section>${modalMarkup()}</main>`;
     bind(); save();
   }
 
@@ -493,7 +554,7 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
       const messages = {
         classFront: '빗소리가 멀어졌다. 교실 안에는 전자칠판의 대기음만 남아 있다.',
         classSide: '창가 쪽 바닥에 누군가 급히 떨어뜨린 흔적이 보인다.',
-        homebase: '사물함들이 늘어서 있다. 12번 문에 긁힌 자국이 선명하다.',
+        homebase: '사물함들이 늘어서 있다. 3번 문에 긁힌 자국이 선명하다.',
         library: '오래된 나무 냄새가 난다. 가운데 서가에 푸른 흔적이 번져 있다.',
         digital: 'DS실의 빈 모니터 사이에서 대형 화면 하나만 불규칙하게 깜박인다.',
         lounge: '달빛 아래 피아노 한 대만 따뜻한 빛을 받고 있다.'
@@ -507,8 +568,10 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
   function error(message) { const node = root.querySelector('[data-error]'); if (node) node.textContent = message; state.mistakes += 1; save(); }
 
   function act(action, value) {
+    if (action !== 'toggleSound') wakeAudio();
     if (action === 'start') { state = freshState(); state.screen = 'game'; state.startedAt = Date.now(); render(); startTimer(); return; }
     if (action === 'restart') { localStorage.removeItem(SAVE_KEY); state = freshState(); render(); return; }
+    if (action === 'toggleSound') return toggleSound();
     if (action === 'go') return go(value);
     if (action === 'closeModal') return closeModal();
     if (action === 'showJournal') return openModal('journal');
@@ -530,7 +593,7 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     if (action === 'resetTokens') { state.sequenceChosen = []; return render(); }
     if (action === 'submitSequence') return submitSequence();
     if (action === 'piano') return piano();
-    if (action === 'pianoNote') { if ((state.pianoNotes || []).length < 4) state.pianoNotes.push(value); return render(); }
+    if (action === 'pianoNote') { playPianoNote(value); if ((state.pianoNotes || []).length < 4) state.pianoNotes.push(value); return render(); }
     if (action === 'resetPiano') { state.pianoNotes = []; return render(); }
     if (action === 'submitPianoCode') return submitPianoCode();
     if (action === 'submitFinal') return submitFinal();
@@ -539,25 +602,25 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
   function pickup(item) {
     addItem(item);
     if (item === 'pageA') { state.flags.pageA = true; state.log = '종이 한쪽이 찢겨 있다. 반대쪽 조각이 학교 어딘가에 있다.'; addJournal('종이 A: ONLY, THREE가 붉게 표시되어 있다.'); openModal('pageA'); }
-    if (item === 'lockerKey') { state.flags.keyFound = true; state.log = '책상 서랍 안에 숨겨진 12번 사물함 열쇠다. 홈베이스에서 맞는 문을 찾아야 한다.'; addJournal('교실 책상 서랍에서 “12”가 새겨진 열쇠를 발견했다.'); render(); }
+    if (item === 'lockerKey') { state.flags.keyFound = true; state.log = '책상 서랍 안에 숨겨진 3번 사물함 열쇠다. 홈베이스에서 맞는 문을 찾아야 한다.'; addJournal('교실 책상 서랍에서 “3”이 새겨진 열쇠를 발견했다.'); render(); }
   }
 
   function inspectBoard() {
-    if (state.flags.boardSolved) { state.log = '비상 표시창에는 “창가 쪽 세 번째 책상 서랍”이라는 위치 정보가 남아 있다.'; return render(); }
+    if (state.flags.boardSolved) { state.log = '비상 표시창에는 “이 교실 앞쪽, 가운데 왼편 책상 서랍”이라는 위치 정보가 남아 있다.'; return render(); }
     openModal('board');
   }
 
   function answerBoard(answer) {
     if (answer !== 'visited') return error('표시창이 다시 어두워진다. Have you ever 뒤에 오는 동사 형태를 확인하자.');
     state.flags.boardSeen = true; state.flags.boardSolved = true; state.modal = null;
-    state.log = '정답을 누르자 비상 표시창에 “창가 쪽 세 번째 책상 서랍”이 나타났다.';
+    state.log = '정답을 누르자 비상 표시창에 “이 교실 앞쪽, 가운데 왼편 책상 서랍”이 나타났다.';
     addJournal('전자칠판: Have you ever visited Chuncheon? — have + 과거분사 visited.');
     notify('책상 서랍의 위치가 드러났다.'); render();
   }
 
   function openLocker() {
-    if (state.flags.lockerOpened) { state.log = '12번 사물함은 비어 있다. 안에서 찾은 물건은 인벤토리에 있다.'; return render(); }
-    if (!has('lockerKey') || !state.selected.includes('lockerKey')) { state.log = has('lockerKey') ? '12번 열쇠를 인벤토리에서 먼저 선택해야 한다.' : '열쇠 구멍이 있다. 교실 어딘가에 맞는 열쇠가 있을 것이다.'; return render(); }
+    if (state.flags.lockerOpened) { state.log = '3번 사물함은 비어 있다. 안에서 찾은 물건은 인벤토리에 있다.'; return render(); }
+    if (!has('lockerKey') || !state.selected.includes('lockerKey')) { state.log = has('lockerKey') ? '3번 열쇠를 인벤토리에서 먼저 선택해야 한다.' : '열쇠 구멍이 있다. 교실 어딘가에 맞는 열쇠가 있을 것이다.'; return render(); }
     removeItem('lockerKey'); addItem('pageB'); addItem('blueFilter'); state.flags.lockerOpened = true; state.log = '사물함 안에서 종이의 나머지 절반과 청색 필터를 찾았다.'; addJournal('종이 B: SECOND, 2006이 붉게 표시되어 있다.'); render();
   }
 
